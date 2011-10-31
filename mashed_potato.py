@@ -39,10 +39,10 @@ def get_paths_from_configuration(project_path, configuration_file):
     """Given a the contents of a configuration file, return a list of
     regular expressions that match absolute paths according to that
     configuration.
-    
+
     """
     path_regexps = []
-    
+
     for (line_number, line) in enumerate(configuration_file.split('\n')):
         line = line.strip()
 
@@ -63,7 +63,7 @@ def get_path_regexp(project_path, relative_regexp):
 
     >>> get_path_regexp("/home/wilfred/gxbo", "foo/{a,b}")
     '^/home/wilfred/gxbo/foo/{a,b}$'
-    
+
     """
     absolute_regexp = os.path.join(project_path, relative_regexp)
     absolute_regexp = absolute_regexp.replace('\\', '/')
@@ -73,10 +73,10 @@ def get_path_regexp(project_path, relative_regexp):
 
 def path_matches_regexps(path, path_regexps):
     """Test whether this path matches any of the given regular expressions.
-    
     """
-    path = path.replace('\\','/')
+    path = path.replace('\\', '/')
     return any(re.match(regexp, path) for regexp in path_regexps)
+
 
 def is_minifiable(file_path):
     """JS or CSS files that aren't minified or hidden.
@@ -87,10 +87,9 @@ def is_minifiable(file_path):
     (False, False)
     >>> is_minifiable("bar.gz")
     False
-
     """
     _, file_name = os.path.split(file_path)
-    
+
     if file_name.startswith('.'):
         return False
 
@@ -101,6 +100,7 @@ def is_minifiable(file_path):
         return False
 
     return True
+
 
 def get_minified_name(file_path):
     """Convert a file name into its minified version. We don't do a
@@ -137,14 +137,15 @@ def needs_minifying(file_path):
 
     # don't attempt to minify if there was an error last time and it
     # hasn't changed since
-    if file_path in error_files and error_files[file_path] > source_edited_time:
+    if error_files.get(file_path, -1) > source_edited_time:
         return False
 
     return True
 
+
 def is_installed(name):
     """Is this tool installed and on path?
-    
+
     """
     for path in os.environ["PATH"].split(os.pathsep):
         full_path = os.path.join(path, name)
@@ -153,6 +154,7 @@ def is_installed(name):
             return True
 
     return False
+
 
 def minify(file_path):
     """Create a minified JS or CSS file of the file at file_path.
@@ -167,16 +169,14 @@ def minify(file_path):
             (file_path, get_minified_name(file_path))
     else:
         mashed_potato_path = os.path.dirname(os.path.abspath(__file__))
-        command_line ='java -jar %s/yuicompressor-2.4.5.jar %s > %s' % \
+        command_line = 'java -jar %s/yuicompressor-2.4.5.jar %s > %s' % \
             (mashed_potato_path, file_path, get_minified_name(file_path))
 
     try:
-        if sys.platform == 'win32':
-            p = subprocess.Popen(command_line, shell=True, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
-        else:
-            p = subprocess.Popen(command_line, shell=True, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, close_fds=True)
+        close_fds = (sys.platform != 'win32')
+        p = subprocess.Popen(
+            command_line, shell=True, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, close_fds=close_fds)
     except OSError, e:
         print "\nAn error occured running\n%s\n" % command_line
         print e.strerror
@@ -220,7 +220,7 @@ def all_monitored_files(path_regexps, project_path):
 
     """
     assert os.path.isabs(project_path), "project_path should be absolute"
-    
+
     for subdirectory_path, subdirectories, files in os.walk(project_path):
         if path_matches_regexps(subdirectory_path, path_regexps):
 
@@ -247,33 +247,31 @@ def continually_monitor_files(path_regexps, project_path):
                 except MinifyFailed:
                     print "Error minifying %s" % file_path
                     update_error_logs(True, file_path)
-                        
+
         time.sleep(1)
 
 
 if __name__ == '__main__':
-    if sys.platform == 'win32':
-        java_installed = is_installed('java.exe')
-    else:
-        java_installed = is_installed('java')
+    java_binary = "java.exe" if sys.platform == "win32" else "java"
+    java_installed = is_installed(java_binary)
     if not java_installed:
         print "You need Java installed and on your PATH to run MashedPotato."
         sys.exit(1)
-    
+
     try:
         project_path = sys.argv[1]
-        project_path = os.path.abspath(project_path)
-        configuration_path = os.path.join(project_path, ".mash")
     except IndexError:
         print "Usage: ./mashed_potato <directory containing .mash file>"
         sys.exit()
 
+    project_path = os.path.abspath(project_path)
+    configuration_path = os.path.join(project_path, ".mash")
     if os.path.exists(configuration_path):
         configuration_file = open(configuration_path, 'r').read()
-        path_regexps = get_paths_from_configuration(project_path, configuration_file)
-
+        path_regexps = get_paths_from_configuration(project_path,
+                                                    configuration_file)
     else:
-        print "There isn't a .mash file at \"%s\"." % os.path.abspath(project_path)
+        print "There isn't a .mash file at \"%s\"." % project_path
         print "Look at .mash_example in %s for an example." % os.path.abspath(os.path.dirname(__file__))
         sys.exit()
 
@@ -284,5 +282,4 @@ if __name__ == '__main__':
     try:
         continually_monitor_files(path_regexps, project_path)
     except KeyboardInterrupt:
-        print "" # for tidyness' sake
-
+        print ""  # for tidyness' sake
