@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 
+import doctest
 import unittest
-from mashed_potato import get_paths_from_configuration, path_matches_regexps
+import mashed_potato
+
+get_paths_from_configuration = mashed_potato.get_paths_from_configuration
+path_matches_regexps = mashed_potato.path_matches_regexps
+
 
 class ConfigurationTest(unittest.TestCase):
     def test_comments_ignored(self):
@@ -26,6 +31,10 @@ class RegexpMatchingTest(unittest.TestCase):
         path_regexps = get_paths_from_configuration("/", "abc/[^/]+/ghi")
         self.assertTrue(path_matches_regexps("/abc/def/ghi", path_regexps))
 
+#Make doctests discoverable by unittest
+def load_tests(loader, tests, ignore):
+    tests.addTests(doctest.DocTestSuite(mashed_potato))
+    return tests
 
 if __name__ == '__main__':
     unittest.main()

@@ -62,7 +62,7 @@ def get_path_regexp(project_path, relative_regexp):
     expression which matches an absolute path.
 
     >>> get_path_regexp("/home/wilfred/gxbo", "foo/{a,b}")
-    ^/home/wilfred/gxbo/foo/{a,b}$
+    '^/home/wilfred/gxbo/foo/{a,b}$'
     
     """
     absolute_regexp = os.path.join(project_path, relative_regexp)
@@ -85,6 +85,13 @@ def path_matches_regexps(path, path_regexps):
 def is_minifiable(file_path):
     """JS or CSS files that aren't minified or hidden.
 
+    >>> is_minifiable("foo.js"), is_minifiable("bar.css")
+    (True, True)
+    >>> is_minifiable("a.min.js"), is_minifiable("b.min.css")
+    (False, False)
+    >>> is_minifiable("bar.gz")
+    False
+
     """
     directory_path, file_name = os.path.split(file_path)
     
@@ -103,8 +110,8 @@ def get_minified_name(file_path):
     """Convert a file name into its minified version. We don't do a
     simple .replace() to avoid corner cases, as shown in the example.
 
-    >>> get_minified_name("/a/b/.js/c/foo.js)
-    "/a/b/.js/c/foo.min.js"
+    >>> get_minified_name("/a/b/.js/c/foo.js")
+    '/a/b/.js/c/foo.min.js'
 
     """
     if file_path.endswith('.js'):
