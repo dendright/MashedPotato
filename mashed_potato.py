@@ -76,11 +76,7 @@ def path_matches_regexps(path, path_regexps):
     
     """
     path = path.replace('\\','/')
-    for regexp in path_regexps:
-        if re.match(regexp, path):
-            return True
-
-    return False
+    return any(re.match(regexp, path) for regexp in path_regexps)
 
 def is_minifiable(file_path):
     """JS or CSS files that aren't minified or hidden.
@@ -93,15 +89,15 @@ def is_minifiable(file_path):
     False
 
     """
-    directory_path, file_name = os.path.split(file_path)
+    _, file_name = os.path.split(file_path)
     
     if file_name.startswith('.'):
         return False
 
-    if not (file_name.endswith('.js') or file_name.endswith('.css')):
+    if not file_name.endswith(('.js', '.css')):
         return False
 
-    if file_name.endswith('.min.js') or file_name.endswith('.min.css'):
+    if file_name.endswith(('.min.js', '.min.css')):
         return False
 
     return True
@@ -114,11 +110,10 @@ def get_minified_name(file_path):
     '/a/b/.js/c/foo.min.js'
 
     """
-    if file_path.endswith('.js'):
-        minified_path = file_path[:-3] + '.min.js'
-    elif file_path.endswith('.css'):
-        minified_path = file_path[:-4] + '.min.css'
-
+    for ext in ('.js', '.css'):
+        if file_path.endswith(ext):
+            minified_path = file_path[:-len(ext)] + '.min' + ext
+            break
     return minified_path
 
 
