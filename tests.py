@@ -1,12 +1,49 @@
 #!/usr/bin/env python
+from __future__ import with_statement
 
 import doctest
+import os
+import shutil
 import unittest
+import tempfile
+import textwrap
 import mashed_potato
 
 get_paths_from_configuration = mashed_potato.get_paths_from_configuration
 path_matches_regexps = mashed_potato.path_matches_regexps
 
+class MinifyTest(unittest.TestCase):
+    FIXTURES = {
+        "test.js": """
+var a = null;
+function foo(bar) {
+  console.log("baz");
+  return bar;
+}""",
+        "test.css": """
+body {
+  width: 100%;
+  margin: 0px 0px 0px 0px;
+}"""
+        }
+
+    def setUp(self):
+        self._temp_dir = tempfile.mkdtemp()
+        self.file_paths = []
+        for filename, contents in self.FIXTURES.items():
+            file_path = os.path.join(self._temp_dir, filename)
+            fh = open(file_path, "w")
+            fh.write(contents)
+            self.file_paths.append(file_path)
+
+    def test_minify_files_individually(self):
+        for file_path in self.file_paths:
+            mashed_potato.minify(file_path)
+            minified_name = mashed_potato.get_minified_name(file_path)
+            self.assertTrue(os.path.exists(minified_name))
+
+    def tearDown(self):
+        shutil.rmtree(self._temp_dir)
 
 class ConfigurationTest(unittest.TestCase):
     def test_comments_ignored(self):
