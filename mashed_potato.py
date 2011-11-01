@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 from __future__ import with_statement
 
 import os
@@ -214,40 +214,40 @@ def update_error_logs(errored, path):
             os.remove(error_file_path)
 
 
-def all_monitored_files(path_regexps, project_path):
-    """For all the subdirectories in this path which match a
-    path_regexp, return a list of their files and paths.
-
+def all_monitored_directories(path_regexps, project_path):
+    """Return a sequence of subdirectories under project_path which
+    match a path_regexp
     """
-    assert os.path.isabs(project_path), "project_path should be absolute"
-
     for subdirectory_path, subdirectories, files in os.walk(project_path):
         if path_matches_regexps(subdirectory_path, path_regexps):
+            yield subdirectory_path
 
-            # this directory matches, so yield all its contents
-            for file_name in files:
-                file_path = os.path.join(subdirectory_path, file_name)
-                yield file_path
+
+def minify_and_log(file_path):
+    try:
+        minify(file_path)
+        # inform the user:
+        now_time = datetime.datetime.now().time()
+        pretty_now_time = str(now_time).split('.')[0]
+        print "[%s] Minified %s" % (pretty_now_time, file_path)
+        update_error_logs(False, file_path)
+    except MinifyFailed:
+        print "Error minifying %s" % file_path
+        update_error_logs(True, file_path)
+
+
+def minify_all_in_directory(directory):
+    _, _, files = os.walk(directory).next()
+    for file_path in files:
+        file_path = os.path.join(directory, file_path)
+        if is_minifiable(file_path) and needs_minifying(file_path):
+            minify_and_log(file_path)
 
 
 def continually_monitor_files(path_regexps, project_path):
     while True:
-        for file_path in all_monitored_files(path_regexps, project_path):
-            if is_minifiable(file_path) and needs_minifying(file_path):
-                try:
-                    minify(file_path)
-
-                    # inform the user:
-                    now_time = datetime.datetime.now().time()
-                    pretty_now_time = str(now_time).split('.')[0]
-                    print "[%s] Minified %s" % (pretty_now_time, file_path)
-
-                    update_error_logs(False, file_path)
-
-                except MinifyFailed:
-                    print "Error minifying %s" % file_path
-                    update_error_logs(True, file_path)
-
+        for directory in all_monitored_directories(path_regexps, project_path):
+            minify_all_in_directory(directory)
         time.sleep(1)
 
 
