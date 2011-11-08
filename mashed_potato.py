@@ -8,6 +8,8 @@ import datetime
 import re
 import subprocess
 
+import inotifyx  # TODO: fallback to sleep code on ImportError
+
 # todo: don't break if java isn't on PATH
 
 """MashedPotato: An automatic JavaScript and CSS minifier
@@ -245,10 +247,20 @@ def minify_all_in_directory(directory):
 
 
 def continually_monitor_files(path_regexps, project_path):
+    fd = inotifyx.init()
+    watches_added = False
+    monitored_directories = list(
+        all_monitored_directories(path_regexps, project_path))
     while True:
-        for directory in all_monitored_directories(path_regexps, project_path):
+        for directory in monitored_directories:
             minify_all_in_directory(directory)
-        time.sleep(1)
+        if not watches_added:
+            for directory in monitored_directories:
+                wd = inotifyx.add_watch(
+                    fd, directory, inotifyx.IN_CREATE | inotifyx.IN_MODIFY)
+            watches_added = True
+        # Wait until we get notified of any event in any watch directory
+        events = inotifyx.get_events(fd)
 
 
 if __name__ == '__main__':
