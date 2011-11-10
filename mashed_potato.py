@@ -8,6 +8,8 @@ import datetime
 import re
 import subprocess
 
+import inotifyx
+
 # todo: don't break if java isn't on PATH
 
 """MashedPotato: An automatic JavaScript and CSS minifier
@@ -250,6 +252,45 @@ def continually_monitor_files(path_regexps, project_path):
             minify_all_in_directory(directory)
         time.sleep(1)
 
+class ContinualMinifier(object):
+    def __init__(self, path_regexps, project_path):
+        self._path_regexps = path_regexps
+        self._project_path = project_path
+        self._watches = {}
+        self.inotify_handle = None
+        self.monitored_directories = list(all_monitored_directories(
+                path_regexps, project_path))
+
+    def _watch_directory(self, directory):
+        """Add directory to watch list, listening for
+        create or modify events"""
+        #import ipdb; ipdb.set_trace()
+        self._watches['directory'] = inotifyx.add_watch(
+            self.inotify_handle, directory, 
+            inotifyx.IN_CREATE | inotifyx.IN_MODIFY)
+
+    def _unwatch_directory(self, directory):
+            #TODO: tell inotify to stop watching
+            #then delete from dict
+            pass
+
+    def continually_monitor_files(self):
+        """Minify everything on first run, then wait for filesystem events
+        before making subsequent attempts to minify"""
+        self.inotify_handle = inotifyx.init()
+        
+        for directory in self.monitored_directories:
+            minify_all_in_directory(directory)
+            self._watch_directory(directory)      
+        while True:
+            # Block until we get notified of any event in any watch directory
+            events = inotifyx.get_events(self.inotify_handle)
+            for directory in self.monitored_directories:
+                minify_all_in_directory(directory)
+            #self._process_events(events)
+            #TODO: remove a watch if a directory is deleted
+            # or add a watch if a new directory matching regexp is created
+  
 
 if __name__ == '__main__':
     java_binary = "java.exe" if sys.platform == "win32" else "java"
@@ -278,8 +319,9 @@ if __name__ == '__main__':
     print "Monitoring JavaScript and CSS files for changes."
     print "Press Ctrl-C to quit or Ctrl-Z to stop."
     print ""
-
+    
+    monitor = ContinualMinifier(path_regexps, project_path)
     try:
-        continually_monitor_files(path_regexps, project_path)
+        monitor.continually_monitor_files()
     except KeyboardInterrupt:
         print ""  # for tidyness' sake
