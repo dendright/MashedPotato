@@ -8,7 +8,7 @@ import datetime
 import re
 import subprocess
 
-import inotifyx
+import inotifyx  # TODO: fallback to sleep code on ImportError
 
 # todo: don't break if java isn't on PATH
 
@@ -246,12 +246,6 @@ def minify_all_in_directory(directory):
             minify_and_log(file_path)
 
 
-def continually_monitor_files(path_regexps, project_path):
-    while True:
-        for directory in all_monitored_directories(path_regexps, project_path):
-            minify_all_in_directory(directory)
-        time.sleep(1)
-
 class ContinualMinifier(object):
     def __init__(self, path_regexps, project_path):
         self._path_regexps = path_regexps
@@ -264,7 +258,6 @@ class ContinualMinifier(object):
     def _watch_directory(self, directory):
         """Add directory to watch list, listening for
         create or modify events"""
-        #import ipdb; ipdb.set_trace()
         self._watches['directory'] = inotifyx.add_watch(
             self.inotify_handle, directory, 
             inotifyx.IN_CREATE | inotifyx.IN_MODIFY)
